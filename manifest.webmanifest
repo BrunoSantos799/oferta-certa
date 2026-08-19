@@ -1,0 +1,26 @@
+{
+  "name": "Oferta Certa",
+  "short_name": "Oferta Certa",
+  "description": "Receba promoções do WhatsApp, prepare seu link de afiliado e crie imagens com sua marca.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f4f7",
+  "theme_color": "#111722",
+  "orientation": "any",
+  "icons": [
+    { "src": "/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Colar promoção", "short_name": "Nova promoção", "url": "/?inbox=1", "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }] },
+    { "name": "Ver ofertas", "short_name": "Ofertas", "url": "/?view=offers", "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }] }
+  ],
+  "share_target": {
+    "action": "/?share=1",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  }
+}
