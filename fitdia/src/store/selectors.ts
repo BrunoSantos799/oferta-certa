@@ -27,6 +27,14 @@ export function weightOn(weights: AppData['weights'], date: string): number {
   return w;
 }
 
+/** Texto da quantidade registrada: "1,5 × copo (200 ml)", "300 ml" ou "150 g" */
+export function entryAmountLabel(e: Pick<FoodEntry, 'grams' | 'unit' | 'ml' | 'portionLabel' | 'portionQty'>): string {
+  const n1 = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
+  if (e.portionLabel) return `${n1(e.portionQty ?? 1)} × ${e.portionLabel} (${Math.round(e.grams)} g)`;
+  if (e.unit === 'ml' && e.ml) return `${n1(e.ml)} ml`;
+  return `${n1(e.grams)} g`;
+}
+
 export function entryNutrients(e: FoodEntry) {
   return nutrientsFor(e.food, e.grams);
 }

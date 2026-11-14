@@ -13,8 +13,8 @@ describe('busca', () => {
 });
 
 describe('banco de alimentos', () => {
-  it('tem pelo menos 150 alimentos válidos e ids únicos', () => {
-    expect(FOODS.length).toBeGreaterThanOrEqual(150);
+  it('tem pelo menos 500 alimentos válidos e ids únicos', () => {
+    expect(FOODS.length).toBeGreaterThanOrEqual(500);
     expect(new Set(FOODS.map((f) => f.id)).size).toBe(FOODS.length);
     for (const f of FOODS) {
       expect(f.protein + f.carbs + f.fat).toBeLessThanOrEqual(100.5);
