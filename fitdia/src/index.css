@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokens de cor (HSL) — claro e escuro */
+@layer base {
+  :root {
+    --background: 220 23% 97%;      /* #F7F8FA */
+    --foreground: 222 22% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 22% 11%;
+    --primary: 160 84% 39%;         /* verde-esmeralda #10B981 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 16% 94%;
+    --secondary-foreground: 222 22% 15%;
+    --muted: 220 16% 94%;
+    --muted-foreground: 220 9% 42%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 14% 90%;
+    --input: 220 14% 88%;
+    --ring: 160 84% 39%;
+    --food: 25 95% 53%;             /* laranja: calorias consumidas */
+    --workout: 217 91% 60%;         /* azul: treinos */
+    --water: 262 83% 63%;           /* roxo: água */
+  }
+  .dark {
+    --background: 225 17% 7%;       /* #0F1115 */
+    --foreground: 220 14% 95%;
+    --card: 225 14% 11%;
+    --card-foreground: 220 14% 95%;
+    --primary: 158 64% 52%;
+    --primary-foreground: 225 17% 7%;
+    --secondary: 225 12% 17%;
+    --secondary-foreground: 220 14% 95%;
+    --muted: 225 12% 17%;
+    --muted-foreground: 220 9% 66%;
+    --destructive: 0 70% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 225 12% 18%;
+    --input: 225 12% 22%;
+    --ring: 158 64% 52%;
+    --food: 27 96% 61%;
+    --workout: 213 94% 68%;
+    --water: 258 90% 72%;
+  }
+  * { @apply border-border; }
+  html { -webkit-tap-highlight-color: transparent; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'tnum' 1; /* números tabulares */
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type='number'] { -moz-appearance: textfield; }
+}
+
+@layer utilities {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
