@@ -61,7 +61,7 @@ export function AddFoodSheet() {
   const title = editing ? 'Editar alimento' : selected ? selected.name : 'Adicionar alimento';
 
   return (
-    <Sheet open={state.open} onOpenChange={setFood} title={title} description={selected ? undefined : MEALS.find((m) => m.id === meal)?.label}>
+    <Sheet open={state.open} onOpenChange={setFood} title={title} description={selected ? undefined : MEALS.find((m) => m.id === meal)?.label} full={!selected}>
       {selected ? (
         <QuantityForm
           key={selected.id + (editing?.id ?? '')}
@@ -93,9 +93,11 @@ export function AddFoodSheet() {
 
           {view === 'buscar' && (
             <>
-              <div className="relative">
+              <div className="sticky top-0 z-10 -mx-5 bg-background px-5 pb-2">
+                <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-                <Input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar: arroz, feijão, açaí..." className="pl-10" aria-label="Buscar alimento" role="combobox" aria-expanded="true" aria-controls="food-results" />
+                <Input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar: arroz, feijão, açaí..." className="pl-10" aria-label="Buscar alimento" role="combobox" aria-expanded="true" aria-controls="food-results" enterKeyHint="search" onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+                </div>
               </div>
               {!query && recent.length > 0 && <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recentes</p>}
               <ul id="food-results" role="listbox" className="space-y-1">

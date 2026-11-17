@@ -110,7 +110,7 @@ export function ExercisePicker({ open, onOpenChange, onPick }: { open: boolean; 
   const filtered = useMemo(() => searchByName(group === 'todos' ? all : all.filter((e) => e.group === group), q, 200), [all, group, q]);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="Escolher exercício">
+    <Sheet open={open} onOpenChange={onOpenChange} title="Escolher exercício" full={!creating}>
       {creating ? (
         <div className="space-y-3">
           <Field label="Nome do exercício" value={newName} onChange={(e) => setNewName(e.target.value)} error={touched ? nameError(newName) : null} autoFocus maxLength={50} />
@@ -136,9 +136,11 @@ export function ExercisePicker({ open, onOpenChange, onPick }: { open: boolean; 
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar exercício" className="pl-10" aria-label="Buscar exercício" />
+          <div className="sticky top-0 z-10 -mx-5 bg-background px-5 pb-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar exercício" className="pl-10" aria-label="Buscar exercício" enterKeyHint="search" />
+            </div>
           </div>
           <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 no-scrollbar">
             {[{ id: 'todos' as const, label: 'Todos' }, ...MUSCLE_GROUPS].map((g) => (
