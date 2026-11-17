@@ -1,19 +1,9 @@
 // Banco de dados local de alimentos comuns no Brasil.
 // Valores por 100 g, aproximados a partir da Tabela Brasileira de Composição de Alimentos (TACO/UNICAMP)
 // e de rótulos médios de produtos industrializados.
-import type { Food, Portion } from '@/store/types';
-
-type Row = [id: string, name: string, kcal: number, protein: number, carbs: number, fat: number, category: string, portions: Portion[]];
-
-// Porções caseiras reutilizáveis
-const p = (label: string, grams: number): Portion => ({ label, grams });
-const COLHER_ARROZ = [p('colher de sopa', 25), p('escumadeira', 90), p('prato raso (porção)', 150)];
-const CONCHA = [p('concha média', 140), p('colher de sopa', 20)];
-const FILE = [p('filé médio', 100), p('pedaço pequeno', 60)];
-const COLHER_SOPA = (g: number) => [p('colher de sopa', g)];
-const UNIDADE = (g: number, extra: Portion[] = []) => [p('unidade', g), ...extra];
-const FATIA = (g: number) => [p('fatia', g)];
-const COPO = (g = 200) => [p('copo (200 ml)', g), p('xícara (240 ml)', 240)];
+import type { Food } from '@/store/types';
+import { p, COLHER_ARROZ, CONCHA, FILE, COLHER_SOPA, UNIDADE, FATIA, COPO, DENSITY_BY_ID, LIQUID_CATEGORIES, type Row } from './foodHelpers';
+import { EXTRA_ROWS } from './foodsExtra';
 
 const ROWS: Row[] = [
   // ---- Cereais, pães e massas ----
@@ -266,7 +256,7 @@ const ROWS: Row[] = [
   ['azeitona', 'Azeitona verde', 145, 1.0, 4.0, 15.0, 'Molhos', UNIDADE(4)],
 ];
 
-export const FOODS: Food[] = ROWS.map(([id, name, kcal, protein, carbs, fat, category, portions]) => ({
+export const FOODS: Food[] = [...ROWS, ...EXTRA_ROWS].map(([id, name, kcal, protein, carbs, fat, category, portions, density]) => ({
   id,
   name,
   kcal,
@@ -274,8 +264,9 @@ export const FOODS: Food[] = ROWS.map(([id, name, kcal, protein, carbs, fat, cat
   carbs,
   fat,
   category,
-  // Toda comida também aceita gramas; "100 g" é sempre a primeira referência
   portions,
+  // Densidade (g/ml): permite informar a quantidade em ml
+  density: density ?? DENSITY_BY_ID[id] ?? (LIQUID_CATEGORIES.has(category) ? 1.0 : undefined),
 }));
 
 export function findFood(id: string, custom: Food[] = []): Food | undefined {

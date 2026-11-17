@@ -9,7 +9,7 @@ App web (PWA) em português para acompanhar **gasto calórico, alimentação e t
 - **Questionário inicial** (uma pergunta por tela): rotina de trabalho, deslocamento, passos, tarefas, sono, treinos, objetivo e alimentação. O gasto do dia a dia (NEAT) é calculado **bloco a bloco com valores MET**, não com um fator genérico.
 - **Resumo do gasto**: basal (Mifflin-St Jeor e, se informado o % de gordura, Katch-McArdle), dia a dia, exercício e digestão; dias com e sem treino; meta sugerida; fator de atividade equivalente.
 - **Ajuste adaptativo**: compara a variação real do peso com o saldo registrado (janela de 28 dias) e corrige a estimativa de gasto.
-- **Alimentação**: 227 alimentos brasileiros (valores por 100 g, baseados na TACO) com porções caseiras, busca que ignora acentos, alimentos personalizados, refeições favoritas, edição e exclusão.
+- **Alimentação**: 712 alimentos, dos mais comuns aos regionais (cupuaçu, pequi, tacacá, maniçoba…), com valores por 100 g baseados na TACO/UNICAMP e no USDA, porções caseiras, quantidade em **porções, gramas ou ml** (líquidos e cremosos, com conversão pela densidade), busca que ignora acentos, alimentos personalizados, refeições favoritas, edição e exclusão.
 - **Treinos**: 29 atividades com MET por intensidade, atividades personalizadas, biblioteca de 79 exercícios por grupo muscular, fichas (Treino A/B/C), cálculo automático das calorias da musculação pelo volume, **importação do Hevy** (CSV ou texto compartilhado), gráfico de evolução de carga e recordes pessoais.
 - **Painel do dia**: anel de calorias restantes, gasto total, saldo, macros em rosca, água (35 ml/kg) e navegação entre dias.
 - **Histórico**: consumidas × gastas (semana/mês), evolução do peso, dias seguidos de treino e backup em JSON.

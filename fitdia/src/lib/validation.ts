@@ -10,6 +10,7 @@ export const LIMITS = {
   altura: { min: 100, max: 250, unit: 'cm' },
   gordura: { min: 3, max: 60, unit: '%' },
   gramas: { min: 1, max: 5000, unit: 'g' },
+  ml: { min: 1, max: 5000, unit: 'ml' },
   porcoes: { min: 0.1, max: 50, unit: '' },
   duracao: { min: 1, max: 600, unit: 'min' },
   kcalTreino: { min: 1, max: 5000, unit: 'kcal' },

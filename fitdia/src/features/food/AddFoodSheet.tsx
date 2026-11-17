@@ -8,8 +8,8 @@ import { Field } from '@/components/ui/field';
 import { Segmented } from '@/components/ui/misc';
 import { useSheets } from '@/components/layout/sheets';
 import { useStore } from '@/store/useStore';
-import { MEALS } from '@/store/selectors';
-import type { Food, MealId } from '@/store/types';
+import { MEALS, entryAmountLabel } from '@/store/selectors';
+import type { Food, FoodEntry, MealId } from '@/store/types';
 import { FOODS, nutrientsFor } from '@/data/foods';
 import { searchByName } from '@/lib/text';
 import { macrosError, nameError, numberError } from '@/lib/validation';
@@ -61,19 +61,21 @@ export function AddFoodSheet() {
   const title = editing ? 'Editar alimento' : selected ? selected.name : 'Adicionar alimento';
 
   return (
-    <Sheet open={state.open} onOpenChange={setFood} title={title} description={selected ? undefined : MEALS.find((m) => m.id === meal)?.label}>
+    <Sheet open={state.open} onOpenChange={setFood} title={title} description={selected ? undefined : MEALS.find((m) => m.id === meal)?.label} full={!selected}>
       {selected ? (
         <QuantityForm
           key={selected.id + (editing?.id ?? '')}
           food={selected}
           meal={meal}
           setMeal={setMeal}
-          initialGrams={editing?.grams}
-          initialPortion={editing?.portionLabel}
-          initialQty={editing?.portionQty}
+          initial={editing}
           onBack={editing ? undefined : () => setSelected(null)}
-          onSave={(grams, portionLabel, portionQty) => {
-            const data = { meal, foodId: selected.id, food: { name: selected.name, kcal: selected.kcal, protein: selected.protein, carbs: selected.carbs, fat: selected.fat }, grams, portionLabel, portionQty };
+          onSave={(q) => {
+            const data = {
+              meal, foodId: selected.id,
+              food: { name: selected.name, kcal: selected.kcal, protein: selected.protein, carbs: selected.carbs, fat: selected.fat },
+              grams: q.grams, unit: q.unit, ml: q.ml, portionLabel: q.portionLabel, portionQty: q.portionQty,
+            };
             if (editing) {
               s.updateFoodEntry(editing.id, data);
               toast('Alimento atualizado');
@@ -91,9 +93,11 @@ export function AddFoodSheet() {
 
           {view === 'buscar' && (
             <>
-              <div className="relative">
+              <div className="sticky top-0 z-10 -mx-5 bg-background px-5 pb-2">
+                <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-                <Input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar: arroz, feijão, açaí..." className="pl-10" aria-label="Buscar alimento" role="combobox" aria-expanded="true" aria-controls="food-results" />
+                <Input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar: arroz, feijão, açaí..." className="pl-10" aria-label="Buscar alimento" role="combobox" aria-expanded="true" aria-controls="food-results" enterKeyHint="search" onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+                </div>
               </div>
               {!query && recent.length > 0 && <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recentes</p>}
               <ul id="food-results" role="listbox" className="space-y-1">
@@ -126,36 +130,82 @@ export function AddFoodSheet() {
   );
 }
 
-/** Quantidade em gramas ou porções, com cálculo na hora */
-function QuantityForm({ food, meal, setMeal, initialGrams, initialPortion, initialQty, onBack, onSave, onDelete }: {
+type QtyMode = 'porcao' | 'g' | 'ml';
+
+export interface QtyResult {
+  grams: number;
+  unit?: 'g' | 'ml';
+  ml?: number;
+  portionLabel?: string;
+  portionQty?: number;
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
+const txt = (n: number) => String(round1(n)).replace('.', ',');
+
+/** Quantidade em porções, gramas ou ml (líquidos e cremosos), com cálculo na hora */
+function QuantityForm({ food, meal, setMeal, initial, onBack, onSave, onDelete }: {
   food: Food;
   meal: MealId;
   setMeal: (m: MealId) => void;
-  initialGrams?: number;
-  initialPortion?: string;
-  initialQty?: number;
+  initial?: FoodEntry;
   onBack?: () => void;
-  onSave: (grams: number, portionLabel?: string, portionQty?: number) => void;
+  onSave: (q: QtyResult) => void;
   onDelete?: () => void;
 }) {
   const hasPortions = food.portions.length > 0;
-  const [mode, setMode] = useState<'porcao' | 'gramas'>(initialPortion && hasPortions ? 'porcao' : initialGrams || !hasPortions ? 'gramas' : 'porcao');
-  const [portionIdx, setPortionIdx] = useState(Math.max(0, food.portions.findIndex((p) => p.label === initialPortion)));
-  const [qty, setQty] = useState(initialQty ? String(initialQty).replace('.', ',') : '1');
-  const [grams, setGrams] = useState(initialGrams ? String(initialGrams).replace('.', ',') : '100');
+  const density = food.density;
+  const canMl = !!density;
+
+  // Modo inicial: o mesmo do registro em edição; para novos, porção (se houver) ou ml para líquidos
+  const initialMode: QtyMode = initial
+    ? initial.portionLabel && hasPortions ? 'porcao' : initial.unit === 'ml' && canMl ? 'ml' : 'g'
+    : hasPortions ? 'porcao' : canMl ? 'ml' : 'g';
+  const [mode, setMode] = useState<QtyMode>(initialMode);
+  const [portionIdx, setPortionIdx] = useState(Math.max(0, food.portions.findIndex((x) => x.label === initial?.portionLabel)));
+  const [qty, setQty] = useState(initial?.portionQty ? txt(initial.portionQty) : '1');
+  const [grams, setGrams] = useState(initial ? txt(initial.grams) : '100');
+  const [ml, setMl] = useState(initial?.ml ? txt(initial.ml) : initial && density ? txt(initial.grams / density) : canMl ? '200' : '100');
   const [touched, setTouched] = useState(false);
 
   const portion = food.portions[portionIdx];
-  const err = mode === 'gramas' ? numberError(grams, 'gramas') : numberError(qty, 'porcoes');
-  const totalGrams = mode === 'gramas' ? parseNum(grams) : parseNum(qty) * (portion?.grams ?? 0);
-  const n = nutrientsFor(food, err ? 0 : totalGrams);
+  const err = mode === 'g' ? numberError(grams, 'gramas') : mode === 'ml' ? numberError(ml, 'ml') : numberError(qty, 'porcoes');
+  const totalGrams = err ? 0 : mode === 'g' ? parseNum(grams) : mode === 'ml' ? parseNum(ml) * (density ?? 1) : parseNum(qty) * (portion?.grams ?? 0);
+  const n = nutrientsFor(food, totalGrams);
+
+  // Ao trocar de unidade, converte a quantidade atual para manter o mesmo total
+  const changeMode = (m: QtyMode) => {
+    if (totalGrams > 0) {
+      if (m === 'g') setGrams(txt(totalGrams));
+      if (m === 'ml' && density) setMl(txt(totalGrams / density));
+    }
+    setMode(m);
+    setTouched(false);
+  };
+
+  // Soma ou subtrai do valor atual (botões − e +)
+  const bump = (delta: number) => {
+    const set = mode === 'g' ? setGrams : mode === 'ml' ? setMl : setQty;
+    const cur = parseNum(mode === 'g' ? grams : mode === 'ml' ? ml : qty);
+    const min = mode === 'porcao' ? 0.5 : 1;
+    set(txt(Math.max(min, (Number.isNaN(cur) ? 0 : cur) + delta)));
+  };
 
   const save = () => {
     setTouched(true);
     if (err) return;
-    if (mode === 'gramas') onSave(Math.round(parseNum(grams) * 10) / 10);
-    else onSave(Math.round(totalGrams * 10) / 10, portion.label, parseNum(qty));
+    if (mode === 'g') onSave({ grams: round1(parseNum(grams)), unit: 'g' });
+    else if (mode === 'ml') onSave({ grams: round1(totalGrams), unit: 'ml', ml: round1(parseNum(ml)) });
+    else onSave({ grams: round1(totalGrams), portionLabel: portion.label, portionQty: parseNum(qty) });
   };
+
+  const modes: Array<{ value: QtyMode; label: string }> = [
+    ...(hasPortions ? [{ value: 'porcao' as const, label: 'Porções' }] : []),
+    { value: 'g', label: 'Gramas' },
+    ...(canMl ? [{ value: 'ml' as const, label: 'ml' }] : []),
+  ];
+  const step = mode === 'porcao' ? 0.5 : 10;
+  const presets = mode === 'ml' ? [50, 100, 150, 200, 250, 300, 350, 500] : [10, 25, 50, 100, 150, 200, 300];
 
   return (
     <div className="space-y-4">
@@ -164,37 +214,65 @@ function QuantityForm({ food, meal, setMeal, initialGrams, initialPortion, initi
       )}
 
       {/* Resultado calculado na hora */}
-      <div className="grid grid-cols-4 gap-2 rounded-lg bg-card p-3 text-center shadow-soft dark:shadow-none">
-        <div><p className="text-2xl font-extrabold text-food tabular-nums">{fmt(n.kcal)}</p><p className="text-[11px] text-muted-foreground">kcal</p></div>
-        <div><p className="text-lg font-bold tabular-nums">{fmt1(n.protein)}</p><p className="text-[11px] text-muted-foreground">Proteína (g)</p></div>
-        <div><p className="text-lg font-bold tabular-nums">{fmt1(n.carbs)}</p><p className="text-[11px] text-muted-foreground">Carbo (g)</p></div>
-        <div><p className="text-lg font-bold tabular-nums">{fmt1(n.fat)}</p><p className="text-[11px] text-muted-foreground">Gordura (g)</p></div>
+      <div className="rounded-lg bg-card p-3 shadow-soft dark:shadow-none">
+        <div className="grid grid-cols-4 gap-2 text-center">
+          <div><p className="text-2xl font-extrabold text-food tabular-nums">{fmt(n.kcal)}</p><p className="text-[11px] text-muted-foreground">kcal</p></div>
+          <div><p className="text-lg font-bold tabular-nums">{fmt1(n.protein)}</p><p className="text-[11px] text-muted-foreground">Proteína (g)</p></div>
+          <div><p className="text-lg font-bold tabular-nums">{fmt1(n.carbs)}</p><p className="text-[11px] text-muted-foreground">Carbo (g)</p></div>
+          <div><p className="text-lg font-bold tabular-nums">{fmt1(n.fat)}</p><p className="text-[11px] text-muted-foreground">Gordura (g)</p></div>
+        </div>
+        <p className="mt-2 border-t border-border/60 pt-2 text-center text-[11px] text-muted-foreground">
+          {fmt(food.kcal)} kcal por 100 g{density ? ` · ${fmt(food.kcal * density)} kcal por 100 ml` : ''}
+        </p>
       </div>
 
-      {hasPortions && (
-        <Segmented ariaLabel="qty-mode" value={mode} onChange={setMode} options={[{ value: 'porcao', label: 'Porções' }, { value: 'gramas', label: 'Gramas' }]} />
+      {modes.length > 1 && <Segmented ariaLabel="unidade" value={mode} onChange={changeMode} options={modes} />}
+
+      {mode === 'porcao' && portion && (
+        <div className="flex flex-wrap gap-2">
+          {food.portions.map((x, i) => (
+            <button key={x.label} onClick={() => setPortionIdx(i)} aria-pressed={i === portionIdx}
+              className={cn('min-h-[44px] rounded-full border-2 px-3.5 text-sm font-semibold', i === portionIdx ? 'border-primary bg-primary/10 text-primary' : 'border-transparent bg-secondary')}>
+              {x.label} <span className="font-normal opacity-70">({fmt(x.grams)} g)</span>
+            </button>
+          ))}
+        </div>
       )}
 
-      {mode === 'porcao' && portion ? (
-        <>
-          <div className="flex flex-wrap gap-2">
-            {food.portions.map((p, i) => (
-              <button key={p.label} onClick={() => setPortionIdx(i)} aria-pressed={i === portionIdx}
-                className={cn('min-h-[44px] rounded-full border-2 px-3.5 text-sm font-semibold', i === portionIdx ? 'border-primary bg-primary/10 text-primary' : 'border-transparent bg-secondary')}>
-                {p.label} <span className="font-normal opacity-70">({fmt(p.grams)} g)</span>
-              </button>
-            ))}
-          </div>
-          <div className="flex items-end gap-2">
-            <Field className="flex-1" label="Quantidade" inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} error={touched ? err : null} hint={`= ${fmt(totalGrams || 0)} g`} />
-            {['0,5', '1', '2'].map((q) => (
-              <Button key={q} variant="secondary" className="mb-[22px] w-12 px-0" onClick={() => setQty(q)}>{q}</Button>
-            ))}
-          </div>
-        </>
-      ) : (
-        <Field label="Quantidade em gramas" inputMode="decimal" value={grams} onChange={(e) => setGrams(e.target.value)} error={touched ? err : null} suffix="g" />
-      )}
+      {/* Campo de quantidade com botões − e + */}
+      <div className="flex items-start gap-2">
+        <Button variant="secondary" size="icon" className="mt-[26px] shrink-0 text-xl" aria-label="Diminuir quantidade" onClick={() => bump(-step)}>−</Button>
+        {mode === 'g' && (
+          <Field className="flex-1" label="Quantidade em gramas" inputMode="decimal" suffix="g" value={grams} onChange={(e) => setGrams(e.target.value)} onFocus={(e) => e.target.select()}
+            error={touched ? err : null} hint={canMl && !err ? `≈ ${fmt(totalGrams / density!)} ml` : undefined} />
+        )}
+        {mode === 'ml' && (
+          <Field className="flex-1" label="Quantidade em ml" inputMode="decimal" suffix="ml" value={ml} onChange={(e) => setMl(e.target.value)} onFocus={(e) => e.target.select()}
+            error={touched ? err : null} hint={!err ? `≈ ${fmt(totalGrams)} g` : undefined} />
+        )}
+        {mode === 'porcao' && (
+          <Field className="flex-1" label="Quantidade de porções" inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} onFocus={(e) => e.target.select()}
+            error={touched ? err : null} hint={!err ? `= ${fmt(totalGrams)} g` : undefined} />
+        )}
+        <Button variant="secondary" size="icon" className="mt-[26px] shrink-0 text-xl" aria-label="Aumentar quantidade" onClick={() => bump(step)}>+</Button>
+      </div>
+
+      {/* Atalhos de quantidade */}
+      <div className="-mx-5 flex gap-1.5 overflow-x-auto px-5 no-scrollbar">
+        {mode === 'porcao'
+          ? ['0,5', '1', '1,5', '2', '3', '4'].map((q) => (
+              <button key={q} onClick={() => setQty(q)} className={cn('min-h-[40px] shrink-0 rounded-full px-3.5 text-sm font-semibold', qty === q ? 'bg-foreground text-background' : 'bg-secondary')}>{q}×</button>
+            ))
+          : presets.map((v) => {
+              const cur = mode === 'g' ? grams : ml;
+              return (
+                <button key={v} onClick={() => (mode === 'g' ? setGrams(String(v)) : setMl(String(v)))}
+                  className={cn('min-h-[40px] shrink-0 rounded-full px-3.5 text-sm font-semibold', cur === String(v) ? 'bg-foreground text-background' : 'bg-secondary')}>
+                  {v} {mode === 'g' ? 'g' : 'ml'}
+                </button>
+              );
+            })}
+      </div>
 
       <div>
         <p className="mb-2 text-sm font-medium">Refeição</p>
@@ -235,7 +313,7 @@ function FavoritesList({ meal, onDone }: { meal: MealId; onDone: () => void }) {
           <li key={f.id} className="flex items-center gap-2 rounded-lg bg-card p-3 shadow-soft dark:shadow-none">
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{f.name}</p>
-              <p className="truncate text-xs text-muted-foreground">{f.items.map((i) => i.food.name).join(', ')} · {fmt(kcal)} kcal</p>
+              <p className="truncate text-xs text-muted-foreground">{f.items.map((i) => `${i.food.name} (${entryAmountLabel(i)})`).join(', ')} · {fmt(kcal)} kcal</p>
             </div>
             <Button size="icon" variant="ghost" aria-label={`Excluir favorita ${f.name}`} onClick={() => s.removeFavorite(f.id)}><Trash2 className="text-muted-foreground" /></Button>
             <Button size="icon" aria-label={`Adicionar ${f.name}`} onClick={() => {
@@ -253,7 +331,7 @@ function FavoritesList({ meal, onDone }: { meal: MealId; onDone: () => void }) {
 /** Cadastro de alimento personalizado (valores por 100 g) */
 export function CustomFoodForm({ initialName = '', onCreated }: { initialName?: string; onCreated: (f: Food) => void }) {
   const add = useStore((s) => s.addCustomFood);
-  const [f, setF] = useState({ name: initialName, kcal: '', protein: '', carbs: '', fat: '', portionLabel: '', portionGrams: '' });
+  const [f, setF] = useState({ name: initialName, kcal: '', protein: '', carbs: '', fat: '', portionLabel: '', portionGrams: '', per: 'g' as 'g' | 'ml' });
   const [touched, setTouched] = useState(false);
   const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }));
 
@@ -271,7 +349,11 @@ export function CustomFoodForm({ initialName = '', onCreated }: { initialName?: 
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">Informe os valores por 100 g (veja a tabela nutricional da embalagem).</p>
+      <p className="text-sm text-muted-foreground">Copie os valores da tabela nutricional da embalagem.</p>
+      <div>
+        <p className="mb-1.5 text-sm font-medium">Valores informados por</p>
+        <Segmented ariaLabel="custom-per" value={f.per} onChange={(per) => set({ per })} options={[{ value: 'g', label: '100 g (sólido)' }, { value: 'ml', label: '100 ml (líquido)' }]} />
+      </div>
       <Field label="Nome do alimento" value={f.name} onChange={(e) => set({ name: e.target.value })} error={show(errors.name)} maxLength={60} />
       <Field label="Calorias" inputMode="decimal" suffix="kcal" value={f.kcal} onChange={(e) => set({ kcal: e.target.value })} error={show(errors.kcal)} />
       <div className="grid grid-cols-3 gap-2">
@@ -282,14 +364,16 @@ export function CustomFoodForm({ initialName = '', onCreated }: { initialName?: 
       {touched && macroErr && <p className="text-xs font-medium text-destructive" role="alert">{macroErr}</p>}
       <div className="grid grid-cols-[1fr_110px] gap-2">
         <Field label="Porção caseira (opcional)" placeholder="Ex.: unidade, fatia" value={f.portionLabel} onChange={(e) => set({ portionLabel: e.target.value })} maxLength={30} />
-        <Field label="Gramas" inputMode="decimal" suffix="g" value={f.portionGrams} onChange={(e) => set({ portionGrams: e.target.value })} error={show(errors.portionGrams)} />
+        <Field label={f.per === 'ml' ? 'ml' : 'Gramas'} inputMode="decimal" suffix={f.per === 'ml' ? 'ml' : 'g'} value={f.portionGrams} onChange={(e) => set({ portionGrams: e.target.value })} error={show(errors.portionGrams)} />
       </div>
       <Button size="lg" className="w-full" onClick={() => {
         setTouched(true);
         if (!valid) return;
         const food = add({
           name: f.name.trim(), kcal: parseNum(f.kcal), protein: parseNum(f.protein), carbs: parseNum(f.carbs), fat: parseNum(f.fat), category: 'Meus alimentos',
-          portions: f.portionLabel.trim() ? [{ label: f.portionLabel.trim(), grams: parseNum(f.portionGrams) }] : [],
+          portions: f.portionLabel.trim() ? [{ label: f.portionLabel.trim() + (f.per === 'ml' ? ` (${f.portionGrams} ml)` : ''), grams: parseNum(f.portionGrams) }] : [],
+          // Líquidos: valores por 100 ml com 1 ml ≈ 1 g, liberando o registro em ml
+          density: f.per === 'ml' ? 1 : undefined,
         });
         toast('Alimento cadastrado');
         onCreated(food);

@@ -11,19 +11,51 @@ interface SheetProps {
   description?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Ocupa toda a altura visível (útil para buscas com lista de resultados) */
+  full?: boolean;
 }
 
-export function Sheet({ open, onOpenChange, title, description, children, footer }: SheetProps) {
+/**
+ * Mede a área realmente visível da tela. Quando o teclado do celular abre,
+ * a área visível encolhe: devolvemos quanto o teclado cobre embaixo e a altura que sobra.
+ */
+function useVisibleViewport(active: boolean) {
+  const [vp, setVp] = React.useState({ keyboard: 0, height: typeof window !== 'undefined' ? window.innerHeight : 800 });
+  React.useEffect(() => {
+    if (!active) return;
+    const vv = window.visualViewport;
+    const update = () => {
+      const height = vv ? vv.height : window.innerHeight;
+      const keyboard = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+      setVp({ keyboard: keyboard < 40 ? 0 : keyboard, height });
+    };
+    update();
+    vv?.addEventListener('resize', update);
+    vv?.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    return () => {
+      vv?.removeEventListener('resize', update);
+      vv?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [active]);
+  return vp;
+}
+
+export function Sheet({ open, onOpenChange, title, description, children, footer, full }: SheetProps) {
+  const vp = useVisibleViewport(open);
+  // Altura máxima: 92% da área visível; com teclado aberto, quase toda a área acima dele
+  const maxHeight = Math.round(vp.keyboard > 0 ? vp.height - 8 : vp.height * 0.92);
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content
           className={cn(
-            'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl bg-background shadow-2xl outline-none',
+            'fixed inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-lg flex-col rounded-t-2xl bg-background shadow-2xl outline-none transition-[bottom,max-height,height] duration-150',
             'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom data-[state=open]:duration-300 data-[state=closed]:duration-200',
           )}
-          aria-describedby={description ? undefined : undefined}
+          style={{ bottom: vp.keyboard, maxHeight, height: full ? maxHeight : undefined }}
         >
           <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-muted-foreground/25" aria-hidden />
           <div className="flex items-start justify-between gap-2 px-5 pb-2 pt-3">
@@ -39,7 +71,7 @@ export function Sheet({ open, onOpenChange, title, description, children, footer
               <X className="size-5" />
             </Dialog.Close>
           </div>
-          <div className="flex-1 overflow-y-auto px-5 pb-4">{children}</div>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-4">{children}</div>
           {footer && <div className="border-t border-border/60 px-5 pb-safe pt-3"><div className="pb-3">{footer}</div></div>}
         </Dialog.Content>
       </Dialog.Portal>

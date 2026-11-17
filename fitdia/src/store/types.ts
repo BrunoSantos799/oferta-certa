@@ -79,6 +79,8 @@ export interface Food {
   fat: number;
   category: string;
   portions: Portion[];
+  /** Gramas por ml. Quando existe, a quantidade também pode ser informada em ml */
+  density?: number;
   custom?: boolean;
 }
 
@@ -90,6 +92,10 @@ export interface FoodEntry {
   /** Cópia dos valores no momento do registro, para o histórico não mudar */
   food: Pick<Food, 'name' | 'kcal' | 'protein' | 'carbs' | 'fat'>;
   grams: number;
+  /** Unidade escolhida no registro (gramas, ml ou porção) */
+  unit?: 'g' | 'ml';
+  /** Quantidade em ml quando registrado em ml */
+  ml?: number;
   portionLabel?: string;
   portionQty?: number;
 }

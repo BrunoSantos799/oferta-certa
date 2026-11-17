@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Star, Trash2, ChevronRight } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { MEALS, entryNutrients, useDaySummary } from '@/store/selectors';
+import { MEALS, entryAmountLabel, entryNutrients, useDaySummary } from '@/store/selectors';
 import type { MealId } from '@/store/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -81,7 +81,7 @@ export function FoodPage() {
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-semibold">{e.food.name}</span>
                           <span className="block text-xs text-muted-foreground">
-                            {e.portionLabel ? `${fmt1(e.portionQty ?? 1)} × ${e.portionLabel} (${fmt(e.grams)} g)` : `${fmt(e.grams)} g`}
+                            {entryAmountLabel(e)}
                           </span>
                         </span>
                         <span className="flex items-center gap-1 text-sm font-bold tabular-nums">{fmt(n.kcal)}<ChevronRight className="size-4 text-muted-foreground" /></span>
@@ -117,7 +117,7 @@ function SaveFavoriteSheet({ meal, onClose }: { meal: MealId | null; onClose: ()
     <Sheet open={meal !== null} onOpenChange={(o) => { if (!o) { onClose(); setName(''); setTouched(false); } }} title="Salvar como favorita" description={`${entries.length} itens do ${label.toLowerCase()}`}>
       <div className="space-y-3">
         <Field label="Nome da refeição" placeholder="Ex.: Café de sempre" value={name} onChange={(e) => setName(e.target.value)} error={touched ? err : null} autoFocus maxLength={40} />
-        <ul className="text-sm text-muted-foreground">{entries.map((e) => <li key={e.id}>• {e.food.name} ({fmt(e.grams)} g)</li>)}</ul>
+        <ul className="text-sm text-muted-foreground">{entries.map((e) => <li key={e.id}>• {e.food.name} ({entryAmountLabel(e)})</li>)}</ul>
         <Button size="lg" className="w-full" onClick={() => {
           setTouched(true);
           if (err) return;
